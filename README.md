@@ -1,3 +1,25 @@
+# RUHANI Monorepo
+
+This monorepo contains the frontend and backend for RUHANI — a culturally-inspired, invisible voice-based AI psychologist for enterprise employees.
+
+## Structure
+
+- `backend/` — FastAPI backend for Employee and HR modes, integrating Groq, ElevenLabs, Fetch.ai, Snowflake, and Coral Protocol.
+- `src/` — Frontend (React/Vite)
+
+## Backend Setup
+
+1. Copy `.env.example` to `backend/.env` and fill in your API keys for Groq, ElevenLabs, Fetch.ai, Snowflake, and Coral Protocol.
+2. Install backend dependencies:
+   ```sh
+   cd backend
+   pip install -r requirements.txt
+   ```
+3. Run the backend:
+   ```sh
+   uvicorn app.main:app --reload
+   ```
+
 # Welcome to your Lovable project
 
 ## Project info

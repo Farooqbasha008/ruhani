@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+pydantic
+httpx
+python-dotenv
+snowflake-connector-python
+sqlalchemy
+pyjwt
+requests
+# For async Snowflake support (optional, comment if not needed)
+# asyncpg
+# For voice/audio processing (placeholder)
+pydub
+# For testing
+pytest 

@@ -7,18 +7,60 @@ This monorepo contains the frontend and backend for RUHANI — a culturally-insp
 - `backend/` — FastAPI backend for Employee and HR modes, integrating Groq, ElevenLabs, Fetch.ai, Snowflake, and Coral Protocol.
 - `src/` — Frontend (React/Vite)
 
-## Backend Setup
+## 🚀 Quick Start for Collaborators
 
-1. Copy `.env.example` to `backend/.env` and fill in your API keys for Groq, ElevenLabs, Fetch.ai, Snowflake, and Coral Protocol.
-2. Install backend dependencies:
+### 1. Backend Setup
+
+1. **Install Python dependencies:**
    ```sh
    cd backend
    pip install -r requirements.txt
    ```
-3. Run the backend:
+
+2. **Set up environment variables:**
+   ```sh
+   # Copy the example file
+   cp .env.example .env
+   
+   # Edit .env with your API keys
+   # See backend/.env.example for detailed instructions
+   ```
+
+3. **Get your API keys:**
+   - **Groq:** [Console](https://console.groq.com/) (for LLM & STT)
+   - **ElevenLabs:** [Dashboard](https://elevenlabs.io/) (for TTS)
+   - **Fetch.ai:** [Console](https://console.fetch.ai/) (for public info)
+   - **Snowflake:** [App](https://app.snowflake.com/) (database)
+   - **Coral Protocol:** [Website](https://coralprotocol.com/) (activity logging)
+
+4. **Run the backend:**
    ```sh
    uvicorn app.main:app --reload
    ```
+
+### 2. Frontend Setup
+
+1. **Install Node.js dependencies:**
+   ```sh
+   npm install
+   ```
+
+2. **Start the frontend:**
+   ```sh
+   npm run dev
+   ```
+
+## 🔐 Security Notes
+
+- **Never commit `.env` files** - they contain sensitive API keys
+- Use `.env.example` as a template for your own `.env` file
+- Each collaborator should have their own API keys
+
+## 📚 API Documentation
+
+Once the backend is running, visit:
+- **Swagger UI:** http://localhost:8000/docs
+- **ReDoc:** http://localhost:8000/redoc
 
 # Welcome to your Lovable project
 

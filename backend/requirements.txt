@@ -12,4 +12,10 @@ requests
 # For voice/audio processing (placeholder)
 pydub
 # For testing
-pytest 
+pytest
+python-jose
+passlib
+python-dotenv
+apscheduler
+openai
+python-multipart

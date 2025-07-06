@@ -1,21 +1,36 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+from app.core.config import settings
+from app.api.api import router as api_router
+from app.core.tasks import process_session_with_ai
+from app.api.deps import get_db
+from app.models.session import WellnessSession
 
-from .api import employee, hr
+app = FastAPI(
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    description="RUHANI - Mental Wellness Platform API"
+)
 
-app = FastAPI(title="RUHANI Backend")
-
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(employee.router, prefix="/employee", tags=["Employee"])
-app.include_router(hr.router, prefix="/hr", tags=["HR"])
+# Include routers
+app.include_router(api_router, prefix=settings.API_V1_STR)
+
+@app.on_event("startup")
+def on_startup():
+    """Initialize services on startup"""
+    # Could add database initialization here if needed
+    pass
 
 @app.get("/")
-def health_check():
-    return {"status": "ok", "message": "RUHANI backend is running"} 
+def root():
+    return {"message": "Welcome to RUHANI Mental Wellness Platform"}

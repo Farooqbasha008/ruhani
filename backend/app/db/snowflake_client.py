@@ -1,26 +1,61 @@
-import os
-from dotenv import load_dotenv
-from pathlib import Path
+import logging
 import snowflake.connector
+from typing import List, Dict, Any, Optional, Union, Tuple
 
-# Load env from ../../.env
-env_path = Path(__file__).resolve().parents[2] / '.env'
-load_dotenv(dotenv_path=env_path)
+from ..core.config import settings
+
+logger = logging.getLogger("ruhani")
 
 class SnowflakeClient:
     def __init__(self):
-        self.conn = snowflake.connector.connect(
-            user=os.getenv("SNOWFLAKE_USER"),
-            password=os.getenv("SNOWFLAKE_PASSWORD"),
-            account=os.getenv("SNOWFLAKE_ACCOUNT"),
-            warehouse=os.getenv("SNOWFLAKE_WAREHOUSE"),
-            database=os.getenv("SNOWFLAKE_DATABASE"),
-            schema=os.getenv("SNOWFLAKE_SCHEMA"),
-            role=os.getenv("SNOWFLAKE_ROLE"),
-            authenticator=os.getenv("SNOWFLAKE_AUTHENTICATOR")
-        )
-
-    def execute(self, query: str, params=None):
-        with self.conn.cursor() as cur:
-            cur.execute(query, params or {})
-            return cur.fetchall()
+        try:
+            self.conn = snowflake.connector.connect(
+                user=settings.SNOWFLAKE_USER,
+                password=settings.SNOWFLAKE_PASSWORD,
+                account=settings.SNOWFLAKE_ACCOUNT,
+                warehouse=settings.SNOWFLAKE_WAREHOUSE,
+                database=settings.SNOWFLAKE_DATABASE,
+                schema=settings.SNOWFLAKE_SCHEMA,
+                role=settings.SNOWFLAKE_ROLE
+            )
+            logger.info("Successfully connected to Snowflake")
+        except Exception as e:
+            logger.error(f"Failed to connect to Snowflake: {e}")
+            raise
+    
+    def execute(self, query: str, params: Optional[Dict[str, Any]] = None) -> Optional[snowflake.connector.cursor.SnowflakeCursor]:
+        """Execute a single SQL query and return the cursor"""
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(query, params)
+            return cursor
+        except Exception as e:
+            logger.error(f"Error executing query: {e}\nQuery: {query}\nParams: {params}")
+            return None
+    
+    def execute_many(self, queries: List[str]) -> List[Tuple[bool, Optional[str]]]:
+        """Execute multiple SQL queries and return success status for each"""
+        results = []
+        for query in queries:
+            try:
+                cursor = self.conn.cursor()
+                cursor.execute(query)
+                results.append((True, None))
+            except Exception as e:
+                error_msg = f"Error executing query: {e}\nQuery: {query}"
+                logger.error(error_msg)
+                results.append((False, error_msg))
+        return results
+    
+    def close(self) -> None:
+        """Close the Snowflake connection"""
+        try:
+            if self.conn:
+                self.conn.close()
+                logger.info("Snowflake connection closed")
+        except Exception as e:
+            logger.error(f"Error closing Snowflake connection: {e}")
+            
+    def __del__(self):
+        """Destructor to ensure connection is closed"""
+        self.close()

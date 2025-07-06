@@ -2,6 +2,18 @@
 
 This monorepo contains the frontend and backend for RUHANI — a culturally-inspired, invisible voice-based AI psychologist for enterprise employees.
 
+## Overview
+
+RUHANI is an AI-powered wellness platform designed to support employee mental health through regular voice-based check-ins. The platform provides a safe space for employees to express their thoughts and feelings, while giving HR teams anonymized insights into organizational well-being.
+
+### Key Features
+
+- **Voice-Based Check-ins**: Employees can have natural conversations with an AI psychologist
+- **Personalized Experience**: System remembers past interactions and adapts to individual needs
+- **HR Dashboard**: Anonymized insights into organizational well-being trends
+- **Privacy-First**: All data is anonymized and protected using Coral Protocol
+- **Multi-Modal**: Combines voice, text, and visual elements for a complete experience
+
 ## Structure
 
 - `backend/` — FastAPI backend for Employee and HR modes, integrating Groq, ElevenLabs, Fetch.ai, Snowflake, and Coral Protocol.
@@ -26,6 +38,35 @@ This monorepo contains the frontend and backend for RUHANI — a culturally-insp
    # See backend/.env.example for detailed instructions
    ```
 
+3. **Environment variables needed:**
+   ```
+   # API Keys
+   GROQ_API_KEY=your_groq_api_key
+   ELEVEN_LABS_API_KEY=your_eleven_labs_api_key
+   FETCH_AI_API_KEY=your_fetch_ai_api_key
+   CORAL_API_KEY=your_coral_api_key
+   
+   # Snowflake Database
+   SNOWFLAKE_ACCOUNT=your_snowflake_account
+   SNOWFLAKE_USER=your_snowflake_user
+   SNOWFLAKE_PASSWORD=your_snowflake_password
+   SNOWFLAKE_DATABASE=your_snowflake_database
+   SNOWFLAKE_SCHEMA=your_snowflake_schema
+   SNOWFLAKE_WAREHOUSE=your_snowflake_warehouse
+   SNOWFLAKE_ROLE=your_snowflake_role
+   
+   # JWT
+   JWT_SECRET=your_jwt_secret
+   
+   # Application Configuration
+   ENVIRONMENT=development  # Set to 'production' in production environment
+   FRONTEND_URL=http://localhost:5173
+   BACKEND_URL=http://localhost:8000
+   
+   # Feature Flags
+   SEED_SAMPLE_DATA=true  # Set to 'false' to disable sample data seeding
+   ```
+
 3. **Get your API keys:**
    - **Groq:** [Console](https://console.groq.com/) (for LLM & STT)
    - **ElevenLabs:** [Dashboard](https://elevenlabs.io/) (for TTS)
@@ -33,8 +74,21 @@ This monorepo contains the frontend and backend for RUHANI — a culturally-insp
    - **Snowflake:** [App](https://app.snowflake.com/) (database)
    - **Coral Protocol:** [Website](https://coralprotocol.com/) (activity logging)
 
-4. **Run the backend:**
+4. **Test the database setup (optional but recommended):**
    ```sh
+   cd backend
+   python -m app.db.test_db_setup
+   ```
+
+5. **Run the backend:**
+   ```sh
+   cd backend
+   python run.py
+   ```
+   
+   Alternatively, you can use uvicorn directly:
+   ```sh
+   cd backend
    uvicorn app.main:app --reload
    ```
 

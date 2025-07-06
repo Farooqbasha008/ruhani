@@ -1,70 +1,110 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { EmployeeCard } from "./EmployeeCard";
+import { api } from "@/lib/api";
+import { Loader2 } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 interface HRDashboardProps {
   onLogout: () => void;
 }
 
-// Mock employee data
-const mockEmployees = [
-  {
-    id: 1,
-    name: "Alex Johnson",
-    avatar: "/api/placeholder/60/60",
-    department: "Engineering",
-    team: "Frontend",
-    lastCheckIn: "2024-01-15",
-    moodTrend: [3, 4, 2, 4, 3],
-    status: "stable" as const,
-    insights: "Generally positive with occasional stress during sprint deadlines."
-  },
-  {
-    id: 2,
-    name: "Sarah Chen",
-    avatar: "/api/placeholder/60/60",
-    department: "Design",
-    team: "UX",
-    lastCheckIn: "2024-01-14",
-    moodTrend: [2, 2, 3, 3, 4],
-    status: "improving" as const,
-    insights: "Showing steady improvement after team restructuring."
-  },
-  {
-    id: 3,
-    name: "Marcus Williams",
-    avatar: "/api/placeholder/60/60",
-    department: "Engineering",
-    team: "Backend",
-    lastCheckIn: "2024-01-13",
-    moodTrend: [4, 3, 2, 2, 1],
-    status: "declining" as const,
-    insights: "Noticeable decline in mood. Recommend wellness check-in."
-  },
-  {
-    id: 4,
-    name: "Emma Davis",
-    avatar: "/api/placeholder/60/60",
-    department: "Marketing",
-    team: "Content",
-    lastCheckIn: "2024-01-15",
-    moodTrend: [4, 4, 5, 4, 5],
-    status: "excellent" as const,
-    insights: "Consistently high mood and engagement levels."
-  }
-];
+// Define types for API responses
+interface EmployeeInsight {
+  id: string;
+  employee_id: string;
+  name: string;
+  team: string;
+  department: string;
+  last_check_in: string;
+  status: "excellent" | "stable" | "improving" | "declining";
+  mood_trend: string[];
+  risk_level: string;
+}
+
+interface EmployeeTrend {
+  period: string;
+  total_sessions: number;
+  mood_distribution: Record<string, number>;
+  common_topics: string[];
+}
+
+interface EmployeeRisk {
+  employee_id: string;
+  name: string;
+  team: string;
+  department: string;
+  last_check_in: string;
+  risk_level: string;
+  risk_factors: string[];
+  recommended_actions: string[];
+}
+
+interface HRInsightsResponse {
+  insights: EmployeeInsight[];
+}
+
+interface HRTrendsResponse {
+  trends: EmployeeTrend[];
+}
+
+interface HRAtRiskResponse {
+  at_risk_employees: EmployeeRisk[];
+}
 
 export const HRDashboard = ({ onLogout }: HRDashboardProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [employees, setEmployees] = useState<EmployeeInsight[]>([]);
+  const [atRiskEmployees, setAtRiskEmployees] = useState<EmployeeRisk[]>([]);
+  const [trends, setTrends] = useState<EmployeeTrend[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [departments, setDepartments] = useState<string[]>([]);
+
+  // Fetch data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch insights
+        const insightsResponse = await api.get<HRInsightsResponse>('/hr/insights');
+        setEmployees(insightsResponse.data.insights);
+        
+        // Extract unique departments
+        const uniqueDepartments = Array.from(
+          new Set(insightsResponse.data.insights.map(e => e.department))
+        ) as string[];
+        setDepartments(uniqueDepartments);
+        
+        // Fetch at-risk employees
+        const atRiskResponse = await api.get<HRAtRiskResponse>('/hr/at-risk');
+        setAtRiskEmployees(atRiskResponse.data.at_risk_employees);
+        
+        // Fetch trends
+        const trendsResponse = await api.get<HRTrendsResponse>('/hr/trends');
+        setTrends(trendsResponse.data.trends);
+      } catch (error) {
+        console.error('Error fetching HR data:', error);
+        toast({
+          title: "Error fetching data",
+          description: "Could not load HR dashboard data. Please try again later.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
 
   // Filter employees based on search and filters
-  const filteredEmployees = mockEmployees.filter(employee => {
+  const filteredEmployees = employees.filter(employee => {
     const matchesSearch = employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          employee.team.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDepartment = departmentFilter === "all" || employee.department === departmentFilter;
@@ -75,10 +115,10 @@ export const HRDashboard = ({ onLogout }: HRDashboardProps) => {
 
   const getStatusStats = () => {
     const stats = {
-      excellent: mockEmployees.filter(e => e.status === "excellent").length,
-      stable: mockEmployees.filter(e => e.status === "stable").length,
-      improving: mockEmployees.filter(e => e.status === "improving").length,
-      declining: mockEmployees.filter(e => e.status === "declining").length,
+      excellent: employees.filter(e => e.status === "excellent").length,
+      stable: employees.filter(e => e.status === "stable").length,
+      improving: employees.filter(e => e.status === "improving").length,
+      declining: employees.filter(e => e.status === "declining").length,
     };
     return stats;
   };
@@ -160,9 +200,9 @@ export const HRDashboard = ({ onLogout }: HRDashboardProps) => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Departments</SelectItem>
-                <SelectItem value="Engineering">Engineering</SelectItem>
-                <SelectItem value="Design">Design</SelectItem>
-                <SelectItem value="Marketing">Marketing</SelectItem>
+                {departments.map(dept => (
+                  <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -180,17 +220,48 @@ export const HRDashboard = ({ onLogout }: HRDashboardProps) => {
           </div>
         </Card>
 
-        {/* Employee Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredEmployees.map((employee) => (
-            <EmployeeCard key={employee.id} employee={employee} />
-          ))}
-        </div>
-
-        {filteredEmployees.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">No employees match your current filters.</p>
+        {/* Loading State */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+            <p className="text-muted-foreground">Loading dashboard data...</p>
           </div>
+        ) : (
+          <>
+            {/* Employee Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredEmployees.map((employee) => (
+                <EmployeeCard 
+                  key={employee.id} 
+                  employee={{
+                    id: parseInt(employee.employee_id),
+                    name: employee.name,
+                    avatar: "/api/placeholder/60/60",
+                    department: employee.department,
+                    team: employee.team,
+                    lastCheckIn: employee.last_check_in || new Date().toISOString(),
+                    moodTrend: employee.mood_trend.map(mood => {
+                      // Convert mood strings to numbers for visualization
+                      if (mood === "happy") return 5;
+                      if (mood === "neutral") return 3;
+                      if (mood === "stressed") return 2;
+                      if (mood === "anxious") return 2;
+                      if (mood === "overwhelmed") return 1;
+                      return 3; // Default
+                    }),
+                    status: employee.status,
+                    insights: `Risk level: ${employee.risk_level}. Recent mood trends show ${employee.status} patterns.`
+                  }} 
+                />
+              ))}
+            </div>
+
+            {filteredEmployees.length === 0 && !loading && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">No employees match your current filters.</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -11,7 +11,7 @@ RUHANI is an AI-powered wellness platform designed to support employee mental he
 - **Voice-Based Check-ins**: Employees can have natural conversations with an AI psychologist
 - **Personalized Experience**: System remembers past interactions and adapts to individual needs
 - **HR Dashboard**: Anonymized insights into organizational well-being trends
-- **Privacy-First**: All data is anonymized and protected using Coral Protocol
+- **Privacy-First**: All data is protected using Coral Protocol's decentralized identity (DID) and verifiable credentials system
 - **Multi-Modal**: Combines voice, text, and visual elements for a complete experience
 
 ## Structure
@@ -44,7 +44,7 @@ RUHANI is an AI-powered wellness platform designed to support employee mental he
    GROQ_API_KEY=your_groq_api_key
    ELEVEN_LABS_API_KEY=your_eleven_labs_api_key
    FETCH_AI_API_KEY=your_fetch_ai_api_key
-   CORAL_API_KEY=your_coral_api_key
+   CORAL_API_KEY=your_coral_api_key  # For decentralized identity and verifiable credentials
    
    # Snowflake Database
    SNOWFLAKE_ACCOUNT=your_snowflake_account

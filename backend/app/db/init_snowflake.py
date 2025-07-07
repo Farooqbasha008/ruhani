@@ -1,6 +1,7 @@
 import uuid
 import json
 import logging
+import hashlib
 from typing import List, Dict, Any, Optional, Tuple
 from .snowflake_client import SnowflakeClient
 from ..core.config import settings
@@ -14,7 +15,7 @@ def init_snowflake_tables() -> bool:
     try:
         client = SnowflakeClient()
         
-        # Create employees table
+        # Create employees table with DID support
         employee_result = client.execute("""
         CREATE TABLE IF NOT EXISTS employees (
             id VARCHAR(36) PRIMARY KEY,
@@ -24,6 +25,8 @@ def init_snowflake_tables() -> bool:
             linkedin_url VARCHAR(255),
             team VARCHAR(255),
             stressors TEXT,
+            did VARCHAR(255),
+            did_document VARIANT,
             onboarding_date TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
         )
         """)
@@ -32,7 +35,7 @@ def init_snowflake_tables() -> bool:
             logger.error("Failed to create employees table")
             return False
         
-        # Create sessions table
+        # Create sessions table with credential support
         session_result = client.execute("""
         CREATE TABLE IF NOT EXISTS sessions (
             session_id VARCHAR(36) PRIMARY KEY,
@@ -40,8 +43,10 @@ def init_snowflake_tables() -> bool:
             session_time TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
             mood VARCHAR(50),
             summary TEXT,
+            summary_hash VARCHAR(64),
             llm_response TEXT,
             risk_level VARCHAR(20),
+            credential_id VARCHAR(255),
             FOREIGN KEY (employee_id) REFERENCES employees(id)
         )
         """)
@@ -65,6 +70,49 @@ def init_snowflake_tables() -> bool:
         
         if not insight_result:
             logger.error("Failed to create hr_insights table")
+            return False
+            
+        # Create credentials table to store verifiable credentials
+        credential_result = client.execute("""
+        CREATE TABLE IF NOT EXISTS credentials (
+            credential_id VARCHAR(255) PRIMARY KEY,
+            credential_type VARCHAR(100) NOT NULL,
+            issuer_did VARCHAR(255) NOT NULL,
+            subject_did VARCHAR(255) NOT NULL,
+            issuance_date TIMESTAMP_NTZ NOT NULL,
+            expiration_date TIMESTAMP_NTZ,
+            credential_data VARIANT NOT NULL,
+            revoked BOOLEAN DEFAULT FALSE,
+            revocation_date TIMESTAMP_NTZ,
+            created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+        )
+        """)
+        
+        if not credential_result:
+            logger.error("Failed to create credentials table")
+            return False
+            
+        # Create consent_records table to track employee consent
+        consent_result = client.execute("""
+        CREATE TABLE IF NOT EXISTS consent_records (
+            consent_id VARCHAR(255) PRIMARY KEY,
+            employee_id VARCHAR(36) NOT NULL,
+            data_categories ARRAY,
+            authorized_parties ARRAY,
+            purpose VARCHAR(255) NOT NULL,
+            credential_id VARCHAR(255),
+            granted_at TIMESTAMP_NTZ NOT NULL,
+            expires_at TIMESTAMP_NTZ,
+            revoked BOOLEAN DEFAULT FALSE,
+            revoked_at TIMESTAMP_NTZ,
+            created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+            FOREIGN KEY (employee_id) REFERENCES employees(id),
+            FOREIGN KEY (credential_id) REFERENCES credentials(credential_id)
+        )
+        """)
+        
+        if not consent_result:
+            logger.error("Failed to create consent_records table")
             return False
         
         logger.info("Snowflake tables initialized successfully")

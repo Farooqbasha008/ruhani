@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     SNOWFLAKE_ACCOUNT: Optional[str] = os.getenv("SNOWFLAKE_ACCOUNT")
     SNOWFLAKE_USER: Optional[str] = os.getenv("SNOWFLAKE_USER")
     SNOWFLAKE_PASSWORD: Optional[str] = os.getenv("SNOWFLAKE_PASSWORD")
+    SNOWFLAKE_WAREHOUSE: str = os.getenv("SNOWFLAKE_WAREHOUSE")
+    SNOWFLAKE_DATABASE: str = os.getenv("SNOWFLAKE_DATABASE")
+    SNOWFLAKE_SCHEMA: str = os.getenv("SNOWFLAKE_SCHEMA")
 
     class Config:
         env_file = ".env"

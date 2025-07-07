@@ -1,10 +1,12 @@
-from typing import List, Optional
+from datetime import datetime  # Added missing import
+from typing import List, Dict, Any  # Added Dict, Any for type hints
 from sqlalchemy.orm import Session
 from app.models.session import WellnessSession
 from app.models.user import User
 from app.schemas.session import WellnessSessionCreate, WellnessSessionUpdate
 from app.db.repositories.session_repository import SessionRepository
 from app.services.ai_service import AIService
+from app.services.snowflake_service import SnowflakeService
 from app.services.wellness_service import WellnessService
 from fastapi import BackgroundTasks
 import uuid
@@ -14,31 +16,32 @@ class EmployeeService:
         self.db = db
         self.session_repo = SessionRepository(db)
         self.ai_service = AIService()
+        self.snowflake = SnowflakeService()  # Consider making this async
         self.wellness_service = WellnessService(db)
 
-    def create_wellness_session(
+    async def create_wellness_session(
         self,
         user: User,
         session_data: WellnessSessionCreate,
         background_tasks: BackgroundTasks
     ) -> WellnessSession:
-        # Create session
-        session_dict = session_data.dict()
-        session_dict["id"] = str(uuid.uuid4())
-        session_dict["user_id"] = user.id
+        """Create a new wellness session with AI analysis and Snowflake logging"""
+        session_dict = session_data.model_dump()  # Changed from .dict() for Pydantic v2
+        session_dict.update({
+            "id": str(uuid.uuid4()),
+            "user_id": user.id
+        })
+        
         session = WellnessSession(**session_dict)
         created_session = self.session_repo.create(session)
 
-        # Add background tasks
-        background_tasks.add_task(
-            self._process_session_with_ai,
-            created_session
-        )
-        background_tasks.add_task(
-            self.wellness_service.check_wellness_alerts,
-            user.id
-        )
+        # Background processing
+        background_tasks.add_task(self._process_session_with_ai, created_session)
+        background_tasks.add_task(self.wellness_service.check_wellness_alerts, user.id)
 
+        # Snowflake logging (consider making async)
+        self._log_to_snowflake(created_session, user)
+        
         return created_session
 
     def get_user_sessions(
@@ -49,7 +52,8 @@ class EmployeeService:
     ) -> List[WellnessSession]:
         return self.session_repo.get_by_user_id(user_id, limit=limit, skip=skip)
 
-    def get_user_wellness_summary(self, user_id: str, days: int = 7) -> dict:
+    def get_user_wellness_summary(self, user_id: str, days: int = 7) -> Dict[str, Any]:
+        """Get wellness summary with trend analysis"""
         sessions = self.session_repo.get_recent_by_user_id(user_id, days=days)
         
         if not sessions:
@@ -61,47 +65,72 @@ class EmployeeService:
                 "recommendations": []
             }
 
-        # Calculate metrics
-        mood_scores = []
-        wellness_scores = []
-        
-        for session in sessions:
-            mood_score = self._mood_to_score(session.mood_level)
-            mood_scores.append(mood_score)
-            if session.ai_wellness_score:
-                wellness_scores.append(session.ai_wellness_score)
-
-        avg_mood = sum(mood_scores) / len(mood_scores)
-        avg_wellness = sum(wellness_scores) / len(wellness_scores) if wellness_scores else None
-
-        # Determine trend
-        if len(mood_scores) >= 3:
-            recent_avg = sum(mood_scores[-3:]) / 3
-            older_avg = sum(mood_scores[:-3]) / len(mood_scores[:-3]) if len(mood_scores) > 3 else recent_avg
-            trend = "improving" if recent_avg > older_avg + 0.2 else "declining" if recent_avg < older_avg - 0.2 else "stable"
-        else:
-            trend = "stable"
-
+        metrics = self._calculate_wellness_metrics(sessions)
         return {
             "total_sessions": len(sessions),
-            "average_mood": avg_mood,
-            "mood_trend": trend,
-            "wellness_score": avg_wellness,
-            "recommendations": self._get_recommendations(sessions)
+            "average_mood": metrics["avg_mood"],
+            "mood_trend": metrics["trend"],
+            "wellness_score": metrics["avg_wellness"],
+            "recommendations": self._generate_recommendations(sessions)
         }
 
+    def _log_to_snowflake(self, session: WellnessSession, user: User):
+        """Log session data to Snowflake"""
+        self.snowflake.log_wellness_session({
+            'session_id': session.id,
+            'user_id': user.id,
+            'timestamp': datetime.utcnow().isoformat(),
+            'wellness_score': session.ai_wellness_score,  # Use actual value from session
+            'mood_level': session.mood_level.value  # Assuming enum value
+        })
+
+    def _calculate_wellness_metrics(self, sessions: List[WellnessSession]) -> Dict[str, Any]:
+        """Calculate wellness metrics from sessions"""
+        mood_scores = [self._mood_to_score(s.mood_level) for s in sessions]
+        wellness_scores = [s.ai_wellness_score for s in sessions if s.ai_wellness_score is not None]
+        
+        avg_mood = sum(mood_scores) / len(mood_scores)
+        avg_wellness = sum(wellness_scores) / len(wellness_scores) if wellness_scores else None
+        
+        trend = self._determine_mood_trend(mood_scores)
+        
+        return {
+            "avg_mood": avg_mood,
+            "avg_wellness": avg_wellness,
+            "trend": trend
+        }
+
+    def _determine_mood_trend(self, mood_scores: List[float]) -> str:
+        """Determine mood trend from historical scores"""
+        if len(mood_scores) < 3:
+            return "stable"
+            
+        recent_avg = sum(mood_scores[-3:]) / 3
+        older_avg = sum(mood_scores[:-3]) / len(mood_scores[:-3])
+        
+        if recent_avg > older_avg + 0.2:
+            return "improving"
+        elif recent_avg < older_avg - 0.2:
+            return "declining"
+        return "stable"
+
     def _process_session_with_ai(self, session: WellnessSession):
-        """Background task to analyze session with AI"""
-        ai_analysis = self.ai_service.analyze_session(session)
-        update_data = WellnessSessionUpdate(
-            ai_wellness_score=ai_analysis.get("wellness_score"),
-            ai_risk_assessment=ai_analysis.get("risk_assessment"),
-            ai_recommendations=ai_analysis.get("recommendations"),
-            ai_insights=ai_analysis.get("insights")
-        )
-        self.session_repo.update(session.id, update_data)
+        """Background task for AI analysis"""
+        try:
+            ai_analysis = self.ai_service.analyze_session(session)
+            update_data = WellnessSessionUpdate(
+                ai_wellness_score=ai_analysis.get("wellness_score"),
+                ai_risk_assessment=ai_analysis.get("risk_assessment"),
+                ai_recommendations=ai_analysis.get("recommendations"),
+                ai_insights=ai_analysis.get("insights")
+            )
+            self.session_repo.update(session.id, update_data)
+        except Exception as e:
+            # Add proper error logging here
+            pass
 
     def _mood_to_score(self, mood_level) -> float:
+        """Convert mood level to numerical score"""
         mood_map = {
             "very_sad": 0.0,
             "sad": 0.25,
@@ -109,9 +138,10 @@ class EmployeeService:
             "happy": 0.75,
             "very_happy": 1.0
         }
-        return mood_map.get(mood_level, 0.5)
+        return mood_map.get(mood_level.value if hasattr(mood_level, 'value') else mood_level, 0.5)
 
-    def _get_recommendations(self, sessions: List[WellnessSession]) -> List[str]:
+    def _generate_recommendations(self, sessions: List[WellnessSession]) -> List[str]:
+        """Generate personalized recommendations"""
         recommendations = []
         recent_moods = [s.mood_level for s in sessions[-3:]]
         

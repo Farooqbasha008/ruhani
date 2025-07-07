@@ -4,6 +4,7 @@ pydantic
 httpx
 python-dotenv
 snowflake-connector-python
+groq
 sqlalchemy
 pyjwt
 requests

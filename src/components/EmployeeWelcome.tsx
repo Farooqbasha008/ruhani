@@ -7,11 +7,15 @@ import ruhaniLogo from "@/assets/ruhani-logo.png";
 interface EmployeeWelcomeProps {
   userName?: string;
   onStartSession: () => void;
+  onLogout: () => void;
+  onBackToLogin?: () => void;
 }
 
 export const EmployeeWelcome = ({ 
   userName = "Alex", 
-  onStartSession 
+  onStartSession,
+  onLogout,
+  onBackToLogin
 }: EmployeeWelcomeProps) => {
   return (
     <div className="min-h-screen bg-gradient-wellness flex items-center justify-center p-4">
@@ -47,14 +51,37 @@ export const EmployeeWelcome = ({
           </p>
         </div>
 
-        {/* Start Button */}
-        <Button
-          onClick={onStartSession}
-          className="w-full h-12 text-lg font-medium bg-primary hover:bg-primary/90 
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          <Button
+            onClick={onStartSession}
+            className="w-full h-12 text-lg font-medium bg-primary hover:bg-primary/90 
                      shadow-soft transition-smooth rounded-xl"
-        >
-          Start Session
-        </Button>
+          >
+            Start Session
+          </Button>
+
+          <div className="flex space-x-2">
+            {onBackToLogin && (
+              <Button
+                onClick={onBackToLogin}
+                variant="outline"
+                className="flex-1 h-10 text-sm font-medium border-primary/30 hover:bg-primary/10 
+                         hover:border-primary/50 transition-smooth rounded-xl"
+              >
+                Back to Home
+              </Button>
+            )}
+            <Button
+              onClick={onLogout}
+              variant="outline"
+              className="flex-1 h-10 text-sm font-medium border-destructive/30 hover:bg-destructive/10 
+                       hover:border-destructive/50 text-destructive transition-smooth rounded-xl"
+            >
+              Logout
+            </Button>
+          </div>
+        </div>
 
         <p className="text-xs text-muted-foreground mt-4">
           Your session is private and secure

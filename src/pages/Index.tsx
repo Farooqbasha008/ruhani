@@ -11,11 +11,11 @@ const Index = () => {
   const [currentMode, setCurrentMode] = useState<AppMode>("home");
 
   if (currentMode === "employee") {
-    return <EmployeeApp />;
+    return <EmployeeApp onBackToHome={() => setCurrentMode("home")} />;
   }
 
   if (currentMode === "hr") {
-    return <HRApp />;
+    return <HRApp onBackToHome={() => setCurrentMode("home")} />;
   }
 
   return (

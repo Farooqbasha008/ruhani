@@ -1,62 +1,88 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import ruhaniLogo from "@/assets/ruhani-logo.png";
 
 interface EmployeeCompleteProps {
   onNewSession: () => void;
+  onLogout: () => void;
+  onBackToWelcome?: () => void;
 }
 
-export const EmployeeComplete = ({ onNewSession }: EmployeeCompleteProps) => {
+export const EmployeeComplete = ({ onNewSession, onLogout, onBackToWelcome }: EmployeeCompleteProps) => {
   return (
     <div className="min-h-screen bg-gradient-wellness flex items-center justify-center p-4">
       <Card className="w-full max-w-md p-8 text-center shadow-card border-0 bg-card/80 backdrop-blur-sm">
-        {/* Success Icon */}
-        <div className="mb-6">
-          <div className="w-20 h-20 mx-auto bg-success/20 rounded-full flex items-center justify-center mb-4">
-            <svg className="w-10 h-10 text-success" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+        {/* Logo */}
+        <div className="mb-8">
+          <img 
+            src={ruhaniLogo} 
+            alt="RUHANI" 
+            className="w-24 h-24 mx-auto mb-4"
+          />
+          <h1 className="text-2xl font-light text-foreground/90">RUHANI</h1>
+        </div>
+
+        {/* Success Message */}
+        <div className="mb-8">
+          <div className="w-16 h-16 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-        </div>
-
-        {/* Thank You Message */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-light text-foreground mb-3">
-            Thank you 💜
+          <h2 className="text-xl font-medium text-foreground mb-2">
+            Session Complete! 🎉
           </h2>
-          <p className="text-muted-foreground leading-relaxed">
-            Your check-in has been recorded securely. We'll take care of the rest and ensure you get the support you need.
+          <p className="text-muted-foreground">
+            Thank you for sharing with me today. Your wellness matters.
           </p>
         </div>
 
-        {/* Gentle Reminder */}
-        <div className="mb-8 p-4 bg-primary/10 rounded-lg">
-          <p className="text-sm text-foreground/80">
-            Remember: You're not alone in this journey. We're here to support your wellbeing every step of the way.
-          </p>
+        {/* Recommendations */}
+        <div className="mb-8 p-4 bg-primary/10 rounded-lg border border-primary/20">
+          <h3 className="text-sm font-medium text-foreground mb-2">Today's Wellness Tips:</h3>
+          <ul className="text-sm text-muted-foreground space-y-1 text-left">
+            <li>• Take a short walk outside</li>
+            <li>• Practice deep breathing exercises</li>
+            <li>• Stay hydrated throughout the day</li>
+            <li>• Connect with a colleague or friend</li>
+          </ul>
         </div>
 
-        {/* Actions */}
+        {/* Action Buttons */}
         <div className="space-y-3">
           <Button
             onClick={onNewSession}
-            variant="outline"
-            className="w-full h-11 font-medium border-primary/30 hover:bg-primary/10 
-                       transition-smooth rounded-xl"
+            className="w-full h-12 text-lg font-medium bg-primary hover:bg-primary/90 
+                     shadow-soft transition-smooth rounded-xl"
           >
-            New Check-in
+            Start New Session
           </Button>
-          
-          <p className="text-xs text-muted-foreground">
-            Next check-in available in 24 hours
-          </p>
-        </div>
 
-        {/* Floating Hearts Animation */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <div className="animate-float text-2xl opacity-20">💜</div>
+          <div className="flex space-x-2">
+            {onBackToWelcome && (
+              <Button
+                onClick={onBackToWelcome}
+                variant="outline"
+                className="flex-1 h-10 text-sm font-medium border-primary/30 hover:bg-primary/10 
+                         hover:border-primary/50 transition-smooth rounded-xl"
+              >
+                Back to Welcome
+              </Button>
+            )}
+            <Button
+              onClick={onLogout}
+              variant="outline"
+              className="flex-1 h-10 text-sm font-medium border-destructive/30 hover:bg-destructive/10 
+                       hover:border-destructive/50 text-destructive transition-smooth rounded-xl"
+            >
+              Logout
+            </Button>
           </div>
         </div>
+
+        <p className="text-xs text-muted-foreground mt-4">
+          Remember, I'm here whenever you need to talk
+        </p>
       </Card>
     </div>
   );

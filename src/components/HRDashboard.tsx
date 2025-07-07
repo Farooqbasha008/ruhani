@@ -5,66 +5,37 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { EmployeeCard } from "./EmployeeCard";
+import { useHrApi } from "@/hooks/useHrApi";
 
 interface HRDashboardProps {
   onLogout: () => void;
 }
-
-// Mock employee data
-const mockEmployees = [
-  {
-    id: 1,
-    name: "Alex Johnson",
-    avatar: "/api/placeholder/60/60",
-    department: "Engineering",
-    team: "Frontend",
-    lastCheckIn: "2024-01-15",
-    moodTrend: [3, 4, 2, 4, 3],
-    status: "stable" as const,
-    insights: "Generally positive with occasional stress during sprint deadlines."
-  },
-  {
-    id: 2,
-    name: "Sarah Chen",
-    avatar: "/api/placeholder/60/60",
-    department: "Design",
-    team: "UX",
-    lastCheckIn: "2024-01-14",
-    moodTrend: [2, 2, 3, 3, 4],
-    status: "improving" as const,
-    insights: "Showing steady improvement after team restructuring."
-  },
-  {
-    id: 3,
-    name: "Marcus Williams",
-    avatar: "/api/placeholder/60/60",
-    department: "Engineering",
-    team: "Backend",
-    lastCheckIn: "2024-01-13",
-    moodTrend: [4, 3, 2, 2, 1],
-    status: "declining" as const,
-    insights: "Noticeable decline in mood. Recommend wellness check-in."
-  },
-  {
-    id: 4,
-    name: "Emma Davis",
-    avatar: "/api/placeholder/60/60",
-    department: "Marketing",
-    team: "Content",
-    lastCheckIn: "2024-01-15",
-    moodTrend: [4, 4, 5, 4, 5],
-    status: "excellent" as const,
-    insights: "Consistently high mood and engagement levels."
-  }
-];
 
 export const HRDashboard = ({ onLogout }: HRDashboardProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  // Fetch real employee data from API
+  const { getAllEmployees, getInsights } = useHrApi();
+  const { data: employeesData, isLoading, error } = getAllEmployees;
+  const { data: insightsData } = getInsights;
+
+  // Transform API data to match EmployeeCard interface
+  const employees = employeesData?.employees?.map((emp: any) => ({
+    id: emp.employee_id,
+    name: emp.name,
+    avatar: "/api/placeholder/60/60", // Keep placeholder for now
+    department: emp.department,
+    team: emp.role,
+    lastCheckIn: emp.last_session ? new Date(emp.last_session).toISOString().split('T')[0] : "Never",
+    moodTrend: [emp.average_mood], // Simplified - could be enhanced with historical data
+    status: emp.wellness_status as "excellent" | "stable" | "improving" | "declining",
+    insights: emp.recommendations?.join(", ") || "No specific insights available."
+  })) || [];
+
   // Filter employees based on search and filters
-  const filteredEmployees = mockEmployees.filter(employee => {
+  const filteredEmployees = employees.filter(employee => {
     const matchesSearch = employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          employee.team.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDepartment = departmentFilter === "all" || employee.department === departmentFilter;
@@ -75,15 +46,42 @@ export const HRDashboard = ({ onLogout }: HRDashboardProps) => {
 
   const getStatusStats = () => {
     const stats = {
-      excellent: mockEmployees.filter(e => e.status === "excellent").length,
-      stable: mockEmployees.filter(e => e.status === "stable").length,
-      improving: mockEmployees.filter(e => e.status === "improving").length,
-      declining: mockEmployees.filter(e => e.status === "declining").length,
+      excellent: employees.filter(e => e.status === "excellent").length,
+      stable: employees.filter(e => e.status === "stable").length,
+      improving: employees.filter(e => e.status === "improving").length,
+      declining: employees.filter(e => e.status === "declining").length,
     };
     return stats;
   };
 
   const stats = getStatusStats();
+
+  // Get unique departments from real data
+  const departments = [...new Set(employees.map(emp => emp.department))].filter(Boolean);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-wellness flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading employee data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-wellness flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-destructive mb-4">Error loading employee data</p>
+          <Button onClick={() => window.location.reload()} variant="outline">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-wellness">
@@ -93,7 +91,9 @@ export const HRDashboard = ({ onLogout }: HRDashboardProps) => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-light text-foreground">RUHANI Dashboard</h1>
-              <p className="text-sm text-muted-foreground">Employee Wellness Overview</p>
+              <p className="text-sm text-muted-foreground">
+                Employee Wellness Overview • {employees.length} Employees
+              </p>
             </div>
             <div className="flex items-center space-x-3">
               <Button
@@ -160,9 +160,9 @@ export const HRDashboard = ({ onLogout }: HRDashboardProps) => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Departments</SelectItem>
-                <SelectItem value="Engineering">Engineering</SelectItem>
-                <SelectItem value="Design">Design</SelectItem>
-                <SelectItem value="Marketing">Marketing</SelectItem>
+                {departments.map(dept => (
+                  <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -189,7 +189,11 @@ export const HRDashboard = ({ onLogout }: HRDashboardProps) => {
 
         {filteredEmployees.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">No employees match your current filters.</p>
+            <p className="text-muted-foreground">
+              {employees.length === 0 
+                ? "No employees found in the system." 
+                : "No employees match your current filters."}
+            </p>
           </div>
         )}
       </div>

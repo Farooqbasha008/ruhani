@@ -7,9 +7,10 @@ import ruhaniLogo from "@/assets/ruhani-logo.png";
 
 interface HRLoginProps {
   onLogin: () => void;
+  onBackToHome?: () => void;
 }
 
-export const HRLogin = ({ onLogin }: HRLoginProps) => {
+export const HRLogin = ({ onLogin, onBackToHome }: HRLoginProps) => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -71,6 +72,18 @@ export const HRLogin = ({ onLogin }: HRLoginProps) => {
             Access Dashboard
           </Button>
         </form>
+
+        {onBackToHome && (
+          <div className="text-center mt-4">
+            <button
+              type="button"
+              onClick={onBackToHome}
+              className="text-sm text-muted-foreground hover:text-foreground underline"
+            >
+              ← Back to Home
+            </button>
+          </div>
+        )}
 
         {/* Demo Info */}
         <div className="mt-6 p-4 bg-muted/50 rounded-lg">

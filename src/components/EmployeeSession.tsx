@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { useEmployeeApi } from "@/hooks/useEmployeeApi";
 
 interface EmployeeSessionProps {
+  employeeId: string;
   onSessionComplete: () => void;
+  onBackToWelcome?: () => void;
 }
 
 const moodEmojis = [
@@ -14,35 +18,120 @@ const moodEmojis = [
   { emoji: "😊", label: "Very Happy", value: 5 },
 ];
 
-export const EmployeeSession = ({ onSessionComplete }: EmployeeSessionProps) => {
+export const EmployeeSession = ({ employeeId, onSessionComplete, onBackToWelcome }: EmployeeSessionProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [selectedMood, setSelectedMood] = useState<number | null>(null);
   const [waveAnimation, setWaveAnimation] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [sessionResult, setSessionResult] = useState<any>(null);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const { toast } = useToast();
+  const { processVoiceSession } = useEmployeeApi();
 
   useEffect(() => {
     if (isRecording) {
       setWaveAnimation(true);
       // Auto-stop recording after 30 seconds for demo
       const timer = setTimeout(() => {
-        setIsRecording(false);
-        setWaveAnimation(false);
+        handleStopRecording();
       }, 30000);
       return () => clearTimeout(timer);
     }
   }, [isRecording]);
 
-  const handleStartRecording = () => {
-    setIsRecording(true);
+  const handleStartRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        setAudioBlob(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      toast({
+        title: "Microphone Access Required",
+        description: "Please allow microphone access to start recording.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleStopRecording = () => {
-    setIsRecording(false);
-    setWaveAnimation(false);
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      setWaveAnimation(false);
+    }
   };
 
-  const handleComplete = () => {
-    if (selectedMood) {
-      onSessionComplete();
+  const handleComplete = async () => {
+    if (!selectedMood) {
+      toast({
+        title: "Mood Rating Required",
+        description: "Please select your mood before completing the session.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!audioBlob) {
+      toast({
+        title: "Voice Recording Required",
+        description: "Please record your voice before completing the session.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // Convert audio blob to base64
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+
+      const result = await processVoiceSession.mutateAsync({
+        employee_id: employeeId,
+        audio_data: base64Audio,
+        mood_rating: selectedMood.toString()
+      });
+
+      if (result.success) {
+        setSessionResult(result);
+        toast({
+          title: "Session Complete",
+          description: "Your wellness session has been processed successfully.",
+        });
+        onSessionComplete();
+      } else {
+        toast({
+          title: "Session Failed",
+          description: "There was an issue processing your session. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Session Error",
+        description: "An error occurred while processing your session.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -100,6 +189,12 @@ export const EmployeeSession = ({ onSessionComplete }: EmployeeSessionProps) => 
           <p className="text-sm text-muted-foreground">
             {isRecording ? "Listening... Tap to stop" : "Tap to start sharing"}
           </p>
+          
+          {audioBlob && (
+            <p className="text-xs text-success mt-2">
+              ✓ Voice recorded successfully
+            </p>
+          )}
         </div>
 
         {/* Mood Selection */}
@@ -125,15 +220,28 @@ export const EmployeeSession = ({ onSessionComplete }: EmployeeSessionProps) => 
           </div>
         </div>
 
-        {/* Complete Button */}
-        <Button
-          onClick={handleComplete}
-          disabled={!selectedMood && !isRecording}
-          className="w-full h-12 text-lg font-medium bg-success hover:bg-success/90 
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          <Button
+            onClick={handleComplete}
+            disabled={!selectedMood || !audioBlob || isProcessing}
+            className="w-full h-12 text-lg font-medium bg-success hover:bg-success/90 
                      shadow-soft transition-smooth rounded-xl disabled:opacity-50"
-        >
-          Complete Check-in
-        </Button>
+          >
+            {isProcessing ? "Processing Session..." : "Complete Check-in"}
+          </Button>
+
+          {onBackToWelcome && (
+            <Button
+              onClick={onBackToWelcome}
+              variant="outline"
+              className="w-full h-10 text-sm font-medium border-primary/30 hover:bg-primary/10 
+                       hover:border-primary/50 transition-smooth rounded-xl"
+            >
+              Back to Welcome
+            </Button>
+          )}
+        </div>
 
         <p className="text-xs text-muted-foreground mt-4">
           Your responses help us better support you

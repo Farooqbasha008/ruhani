@@ -1,20 +1,51 @@
+import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 
 export function useHrApi() {
-  const getInsights = async () => {
-    const res = await api.get('/hr/insights');
-    return res.data;
-  };
+  // Get organizational insights
+  const getInsights = useQuery({
+    queryKey: ['hr-insights'],
+    queryFn: async () => {
+      const res = await api.get('/hr/insights');
+      return res.data;
+    },
+    refetchInterval: 300000, // Refetch every 5 minutes
+  });
 
-  const getTrends = async () => {
-    const res = await api.get('/hr/trends');
-    return res.data;
-  };
+  // Get wellness trends
+  const getTrends = useQuery({
+    queryKey: ['hr-trends'],
+    queryFn: async () => {
+      const res = await api.get('/hr/trends');
+      return res.data;
+    },
+    refetchInterval: 600000, // Refetch every 10 minutes
+  });
 
-  const getAtRisk = async () => {
-    const res = await api.get('/hr/at-risk');
-    return res.data;
-  };
+  // Get at-risk employees
+  const getAtRisk = useQuery({
+    queryKey: ['hr-at-risk'],
+    queryFn: async () => {
+      const res = await api.get('/hr/at-risk');
+      return res.data;
+    },
+    refetchInterval: 300000, // Refetch every 5 minutes
+  });
 
-  return { getInsights, getTrends, getAtRisk };
+  // Get all employees
+  const getAllEmployees = useQuery({
+    queryKey: ['hr-employees'],
+    queryFn: async () => {
+      const res = await api.get('/hr/employees');
+      return res.data;
+    },
+    refetchInterval: 600000, // Refetch every 10 minutes
+  });
+
+  return {
+    getInsights,
+    getTrends,
+    getAtRisk,
+    getAllEmployees
+  };
 } 

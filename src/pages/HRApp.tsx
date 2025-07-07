@@ -2,7 +2,11 @@ import { useState } from "react";
 import { HRLogin } from "@/components/HRLogin";
 import { HRDashboard } from "@/components/HRDashboard";
 
-export const HRApp = () => {
+interface HRAppProps {
+  onBackToHome?: () => void;
+}
+
+export const HRApp = ({ onBackToHome }: HRAppProps) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const handleLogin = () => {
@@ -11,11 +15,14 @@ export const HRApp = () => {
 
   const handleLogout = () => {
     setIsLoggedIn(false);
+    if (onBackToHome) {
+      onBackToHome();
+    }
   };
 
   if (isLoggedIn) {
     return <HRDashboard onLogout={handleLogout} />;
   }
 
-  return <HRLogin onLogin={handleLogin} />;
+  return <HRLogin onLogin={handleLogin} onBackToHome={onBackToHome} />;
 };

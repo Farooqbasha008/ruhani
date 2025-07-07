@@ -3,9 +3,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.core.security import create_access_token
 from app.schemas.auth import LoginRequest, Token, LoginResponse
+from app.schemas.user import UserCreate, UserResponse  # Added UserCreate import
 from app.services.auth_service import AuthService
 from app.api.deps import get_db
-from app.schemas.user import UserResponse
 
 router = APIRouter()
 
@@ -17,13 +17,14 @@ def login(
     auth_service = AuthService(db)
     user = auth_service.authenticate_user(
         LoginRequest(email=form_data.username, password=form_data.password)
+    )
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     access_token = auth_service.create_access_token_for_user(user)
     return LoginResponse(
         access_token=access_token,
@@ -33,7 +34,7 @@ def login(
 
 @router.post("/register")
 def register(
-    user_data: UserCreate,
+    user_data: UserCreate,  # Now properly imported
     db: Session = Depends(get_db)
 ):
     auth_service = AuthService(db)

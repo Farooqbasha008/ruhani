@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from app.core.config import settings
-from app.api.api import router as api_router
+from app.api.v1.api import router as api_router
 from app.core.tasks import process_session_with_ai
 from app.api.deps import get_db
 from app.models.session import WellnessSession

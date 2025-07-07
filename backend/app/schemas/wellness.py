@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any  # Added Any import
 from datetime import datetime
 from app.models.session import MoodLevel
 

@@ -6,6 +6,7 @@ from app.schemas.session import WellnessSessionCreate, WellnessSessionUpdate
 from app.db.repositories.session_repository import SessionRepository
 from app.services.ai_service import AIService
 from app.services.wellness_service import WellnessService
+from fastapi import BackgroundTasks
 import uuid
 
 class EmployeeService:
@@ -14,7 +15,7 @@ class EmployeeService:
         self.session_repo = SessionRepository(db)
         self.ai_service = AIService()
         self.wellness_service = WellnessService(db)
-    
+
     def create_wellness_session(
         self,
         user: User,
@@ -33,22 +34,21 @@ class EmployeeService:
             self._process_session_with_ai,
             created_session
         )
-        
         background_tasks.add_task(
             self.wellness_service.check_wellness_alerts,
             user.id
         )
 
-    return created_session
-    
+        return created_session
+
     def get_user_sessions(
-        self, 
-        user_id: str, 
-        limit: int = 10, 
+        self,
+        user_id: str,
+        limit: int = 10,
         skip: int = 0
     ) -> List[WellnessSession]:
         return self.session_repo.get_by_user_id(user_id, limit=limit, skip=skip)
-    
+
     def get_user_wellness_summary(self, user_id: str, days: int = 7) -> dict:
         sessions = self.session_repo.get_recent_by_user_id(user_id, days=days)
         
@@ -60,36 +60,28 @@ class EmployeeService:
                 "wellness_score": None,
                 "recommendations": []
             }
-        
+
         # Calculate metrics
         mood_scores = []
         wellness_scores = []
         
         for session in sessions:
-            # Convert mood to numeric score
             mood_score = self._mood_to_score(session.mood_level)
             mood_scores.append(mood_score)
-            
             if session.ai_wellness_score:
                 wellness_scores.append(session.ai_wellness_score)
-        
+
         avg_mood = sum(mood_scores) / len(mood_scores)
         avg_wellness = sum(wellness_scores) / len(wellness_scores) if wellness_scores else None
-        
+
         # Determine trend
         if len(mood_scores) >= 3:
             recent_avg = sum(mood_scores[-3:]) / 3
             older_avg = sum(mood_scores[:-3]) / len(mood_scores[:-3]) if len(mood_scores) > 3 else recent_avg
-            
-            if recent_avg > older_avg + 0.2:
-                trend = "improving"
-            elif recent_avg < older_avg - 0.2:
-                trend = "declining"
-            else:
-                trend = "stable"
+            trend = "improving" if recent_avg > older_avg + 0.2 else "declining" if recent_avg < older_avg - 0.2 else "stable"
         else:
             trend = "stable"
-        
+
         return {
             "total_sessions": len(sessions),
             "average_mood": avg_mood,
@@ -97,20 +89,18 @@ class EmployeeService:
             "wellness_score": avg_wellness,
             "recommendations": self._get_recommendations(sessions)
         }
-    
+
     def _process_session_with_ai(self, session: WellnessSession):
-        # This would be called asynchronously
+        """Background task to analyze session with AI"""
         ai_analysis = self.ai_service.analyze_session(session)
-        
         update_data = WellnessSessionUpdate(
             ai_wellness_score=ai_analysis.get("wellness_score"),
             ai_risk_assessment=ai_analysis.get("risk_assessment"),
             ai_recommendations=ai_analysis.get("recommendations"),
             ai_insights=ai_analysis.get("insights")
         )
-        
         self.session_repo.update(session.id, update_data)
-    
+
     def _mood_to_score(self, mood_level) -> float:
         mood_map = {
             "very_sad": 0.0,
@@ -120,20 +110,16 @@ class EmployeeService:
             "very_happy": 1.0
         }
         return mood_map.get(mood_level, 0.5)
-    
+
     def _get_recommendations(self, sessions: List[WellnessSession]) -> List[str]:
         recommendations = []
-        
-        # Simple rule-based recommendations
         recent_moods = [s.mood_level for s in sessions[-3:]]
         
         if "very_sad" in recent_moods:
             recommendations.append("Consider reaching out to our Employee Assistance Program")
-        
         if recent_moods.count("sad") >= 2:
             recommendations.append("Take some time for self-care activities")
-        
         if len(sessions) >= 7:
             recommendations.append("Great job maintaining regular check-ins!")
-        
+            
         return recommendations

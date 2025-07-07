@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # Security
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+    SECRET_KEY: str = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
 
@@ -26,11 +26,14 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # AI Services
-    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
     GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY")
+    GROQ_API_BASE_URL: Optional[str] = os.getenv("GROQ_API_BASE_URL", "https://api.groq.com/v1")
+
+    # ELEVENLABS_API_KEY: Optional[str] = os.getenv("ELEVENLABS_API_KEY")
+    # ELEVENLABS_API_BASE_URL: Optional[str] = os.getenv("ELEVENLABS_API_BASE_URL", "https://api.elevenlabs.io/v1")
 
     # Coral Protocol (Privacy logging)
-    CORAL_API_KEY: Optional[str] = os.getenv("CORAL_API_KEY")
+    # CORAL_API_KEY: Optional[str] = os.getenv("CORAL_API_KEY")
 
     # Snowflake (Analytics)
     SNOWFLAKE_ACCOUNT: Optional[str] = os.getenv("SNOWFLAKE_ACCOUNT")
@@ -42,5 +45,6 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 settings = Settings()
